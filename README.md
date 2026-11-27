@@ -24,6 +24,25 @@ Herunterladen: [www.rosenweg4303.ch/apps](https://www.rosenweg4303.ch/apps).
 
 Siehe [docs/anleitung.md](docs/anleitung.md).
 
+## Was die App macht
+
+Ein Vorgang von der Meldung bis zur Erledigung – ersetzt in der App
+`pwa/reparatur/` (angemeldet), `reklamationen.html` und die STWEG-Seiten
+`stwegN/pages/reklamationen.html`. Die Web-Seiten bleiben, auch der öffentliche
+Teil (Melde-Ort-QR ohne Konto).
+
+| Bereich | Wer | API |
+|---|---|---|
+| Melden | alle | `POST /api/reklamationen` (Foto als Data-URL, vorher verkleinert), `GET /api/melde-ort/:code` |
+| Meine | alle | `/api/reklamationen/meine`, `…/meine/:id/verlauf`, `…/meine/:id/foto`, `…/:id/meine-archivieren` |
+| STWEG | Bewohner/Eigentümer/Ausschuss/Verwaltung der STWEG | `/api/reklamationen/uebersicht?stweg=N` |
+| Bearbeiten | Seitenrecht `reklamationen` (ändern: `write`) | `/api/reklamationen`, `PUT …/:id`, `…/:id/history`, `…/:id/foto`, `/api/technik/mitglieder`, `/api/handwerker`, `…/auto-assign` |
+
+Welche STWEG jemand sieht und ändern darf, liefert `GET /api/reklamationen/rechte`
+(fehlt der Endpunkt, leitet die App es aus den Gruppen ab); die API prüft
+jede Anfrage selbst. Push: keiner (kein ntfy) – Abfrage beim Öffnen,
+bei Rückkehr und alle 5 Minuten (`BeimOeffnen`, `Neuigkeiten` aus der Basis).
+
 ## Entwickeln
 
 ```sh

@@ -334,7 +334,7 @@ packages:
     source: hosted
     version: "2.2.0"
   http:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: http
       sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
@@ -350,7 +350,7 @@ packages:
     source: hosted
     version: "4.1.2"
   image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: image
       sha256: bc13f61f0f5cb77936e78ae5dae3800f442718dac5d2bc4654f03c239230ed0c
@@ -753,11 +753,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "v0.6.2"
-      resolved-ref: "2eb8be9ad849b969678ae8f94097eb0a9530aaf5"
+      ref: c122e16f8bd2f8b97612e7b923af317113f3bfd0
+      resolved-ref: c122e16f8bd2f8b97612e7b923af317113f3bfd0
       url: "https://github.com/Rosenweg/rosenweg-basis.git"
     source: git
-    version: "0.6.2"
+    version: "0.6.3"
   rxdart:
     dependency: transitive
     description:
