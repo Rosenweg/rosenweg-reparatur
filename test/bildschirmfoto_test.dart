@@ -20,9 +20,13 @@ final ziel = Platform.environment['RW_FOTO'];
 
 Future<void> schriften() async {
   final sdk = File(Platform.resolvedExecutable).parent.parent.parent.parent.parent.parent.path;
-  final ordner = ['$sdk/artifacts/material_fonts', '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts']
-      .map(Directory.new)
-      .firstWhere((d) => d.existsSync(), orElse: () => Directory('/opt/homebrew/share/flutter/bin/cache/artifacts/material_fonts'));
+  final ordner =
+      ['$sdk/artifacts/material_fonts', '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts']
+          .map(Directory.new)
+          .firstWhere(
+            (d) => d.existsSync(),
+            orElse: () => Directory('/opt/homebrew/share/flutter/bin/cache/artifacts/material_fonts'),
+          );
   Future<void> laden(String familie, List<String> dateien) async {
     final l = FontLoader(familie);
     for (final d in dateien) {
@@ -48,24 +52,63 @@ void main() {
     if (ziel != null) await schriften();
   });
 
-  Future<void> zeigen(WidgetTester t, Size groesse, {Phase? phase}) async {
+  Future<void> zeigen(WidgetTester t, Size groesse, {Phase? phase, String? bereich}) async {
     t.view.physicalSize = groesse * 2;
     t.view.devicePixelRatio = 2;
     addTearDown(t.view.reset);
-    final s = RosenwegSitzung(appAngaben, transport: Attrappe());
+    await t.pumpWidget(const SizedBox()); // alten Baum (auch offene Seiten) verwerfen
+    final s = attrappeSitzung(appAngaben);
     await s.starten();
     if (phase != null) s.phase = phase;
-    await t.pumpWidget(RepaintBoundary(child: RosenwegRahmen(sitzung: s, inhalt: (_) => Haupt(sitzung: s))));
+    await t.pumpWidget(
+      RepaintBoundary(
+        child: RosenwegRahmen(
+          sitzung: s,
+          inhalt: (_) => Haupt(sitzung: s, speicher: AppSpeicher.imSpeicher()),
+        ),
+      ),
+    );
     await t.runAsync(() => precacheImage(appAngaben.logo!, t.element(find.byType(MaterialApp))));
-    await t.runAsync(() => precacheImage(const AssetImage('assets/logo/rosenweg-reparatur-klein.png'), t.element(find.byType(MaterialApp))));
+    await t.runAsync(
+      () => precacheImage(
+        const AssetImage('assets/logo/rosenweg-reparatur-klein.png'),
+        t.element(find.byType(MaterialApp)),
+      ),
+    );
+    await t.pumpAndSettle();
+    if (bereich != null) {
+      await t.pump(const Duration(milliseconds: 100));
+      await t.pumpAndSettle();
+      await t.tap(
+        find.widgetWithText(NavigationDestination, bereich).evaluate().isNotEmpty
+            ? find.widgetWithText(NavigationDestination, bereich)
+            : find.descendant(of: find.byType(NavigationRail), matching: find.text(bereich)),
+      );
+      await t.pumpAndSettle();
+    }
+  }
+
+  Future<void> warten(WidgetTester t) async {
+    await t.pump();
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await t.pumpAndSettle();
   }
 
   testWidgets('Fotos', (t) async {
     await zeigen(t, const Size(412, 860));
-    await foto(t, 'rosenweg-reparatur-handy.png');
-    await zeigen(t, const Size(1200, 800));
+    await foto(t, 'rosenweg-reparatur-melden.png');
+    await zeigen(t, const Size(412, 860), bereich: 'Meine');
+    await foto(t, 'rosenweg-reparatur-meine.png');
+    await t.tap(find.textContaining('Licht im Treppenhaus'));
+    await warten(t);
+    await foto(t, 'rosenweg-reparatur-meine-detail.png');
+    await zeigen(t, const Size(412, 860), bereich: 'STWEG');
+    await foto(t, 'rosenweg-reparatur-stweg.png');
+    await zeigen(t, const Size(1200, 800), bereich: 'Bearbeiten');
     await foto(t, 'rosenweg-reparatur-station.png');
+    await t.tap(find.textContaining('Wasserhahn'));
+    await warten(t);
+    await foto(t, 'rosenweg-reparatur-bearbeiten.png');
     await zeigen(t, const Size(412, 860), phase: Phase.abgemeldet);
     await foto(t, 'rosenweg-reparatur-anmelden.png');
   }, skip: ziel == null);
