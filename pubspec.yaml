@@ -24,9 +24,8 @@ dependencies:
   rosenweg_basis:
     git:
       url: https://github.com/Rosenweg/rosenweg-basis.git
-      # fester Tag (mit Updater und iOS-MainActor-Fix); neue Basis = neuer Tag
-      # bis Tag v0.6.3 steht: Commit des Basis-PR #28 (FotoFeld, BeimOeffnen)
-      ref: c122e16f8bd2f8b97612e7b923af317113f3bfd0
+      # fester Tag (FotoFeld, GeladenesBild, BeimOeffnen); neue Basis = neuer Tag
+      ref: v0.6.3
 
 dev_dependencies:
   flutter_test:
