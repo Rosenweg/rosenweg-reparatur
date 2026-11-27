@@ -1,0 +1,12 @@
+{
+  "_hinweis": "Eintrag fuer das App-Register (Rosenweg/Website apps-register.json, Abschnitt 'apps', Schluessel = 'app'). Erst damit nimmt die Anlage Releases dieses Repos an. Logo: assets/logo/rosenweg-reparatur-192.png nach www img/apps/rosenweg-reparatur.png.",
+  "app": "reparatur",
+  "name": "Rosenweg Reparatur",
+  "repo": "Rosenweg/rosenweg-reparatur",
+  "paket": "ch.rosenweg4303.reparatur",
+  "logo": "/img/apps/rosenweg-reparatur.png",
+  "reihenfolge": 100,
+  "text": "Schäden melden mit Foto, eigene Meldungen verfolgen, Meldungen der STWEG ansehen und bearbeiten.",
+  "fuer": "",
+  "technik": false
+}

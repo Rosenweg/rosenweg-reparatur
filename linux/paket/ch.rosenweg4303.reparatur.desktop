@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Rosenweg Reparatur
+Comment=Schäden melden mit Foto, eigene Meldungen verfolgen, Meldungen der STWEG ansehen und bearbeiten.
+Exec=rosenweg-reparatur
+# Name im Symbol-Thema (hicolor), kein Pfad.
+Icon=rosenweg-reparatur
+Terminal=false
+# Dateiname = GTK-Anwendungskennung (APPLICATION_ID in linux/CMakeLists.txt).
+StartupWMClass=ch.rosenweg4303.reparatur
+# Kategorie "Rosenweg" im Startmenue der Stationen (os-stationen 60-programme.sh)
+Categories=Office;Utility;
+Keywords=Rosenweg;

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Startet Rosenweg Reparatur aus /opt/rosenweg-reparatur (Flutter-Buendel sucht data/
+# und lib/ neben der echten Programmdatei; wie rosenweg-profil, rosenweg-vm).
+exec /opt/rosenweg-reparatur/rosenweg_reparatur "$@"
