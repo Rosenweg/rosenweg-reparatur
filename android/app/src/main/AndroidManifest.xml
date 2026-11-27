@@ -29,6 +29,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Melde-Ort-QR-Codes (https://pwa.rosenweg4303.ch/reparatur/?ort=…) oeffnen die App
+                 (Android App Links; Beleg: pwa.rosenweg4303.ch/.well-known/assetlinks.json mit
+                 dem SHA-256 des Rosenweg-Schluessels). Ohne App: die PWA wie bisher. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="pwa.rosenweg4303.ch" android:pathPrefix="/reparatur" />
+            </intent-filter>
+            <!-- Links nimmt app_links (AppVerweise der Basis), nicht der Flutter-Router -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
         </activity>
         <!-- Ruecksprung der Anmeldung (ch.rosenweg4303.reparatur:/anmeldung) bringt
              rosenweg_basis mit (RuecksprungActivity, Schema = applicationId). -->

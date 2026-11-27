@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rosenweg_basis/rosenweg_basis.dart';
+import 'package:rosenweg_reparatur/abfrage.dart';
 import 'package:rosenweg_reparatur/app.dart';
 import 'package:rosenweg_reparatur/attrappe.dart';
 import 'package:rosenweg_reparatur/daten.dart';
@@ -32,6 +34,10 @@ Future<void> warten(WidgetTester t) async {
 
 void main() {
   setUpAll(() => Protokoll.nurKonsole = true);
+  setUp(() {
+    Benachrichtigung.attrappe = [];
+    AppVerweise.attrappe = const Stream.empty();
+  });
 
   Future<Attrappe> zeigen(
     WidgetTester t, {
@@ -259,5 +265,43 @@ void main() {
     expect(appAngaben.gruppe, RosenwegGruppe.bewohner);
     expect(File('assets/logo/${appAngaben.ordner}-512.png').existsSync(), isTrue);
     expect(File('assets/logo/${appAngaben.ordner}-klein.png').existsSync(), isTrue);
+  });
+
+  test('Abfrage: Statuswechsel und Zuweisung an mich, eigene neue Meldung still', () async {
+    final a = Attrappe(gruppen: const ['technik']);
+    final s = attrappeSitzung(appAngaben, a);
+    await s.starten();
+    final sp = AppSpeicher.imSpeicher();
+    final k = HintergrundKontext(sitzung: s, speicher: sp, imHintergrund: true);
+    await reparaturAbfrage(k); // erster Lauf: nur merken
+    expect(Benachrichtigung.attrappe, isEmpty);
+    // eigene Meldung #41 wird erledigt, #38 wird mir (Erika Muster) zugewiesen, neue eigene Meldung
+    await s.api.put('/api/reklamationen/41', {'status': 'erledigt'});
+    await s.api.put('/api/reklamationen/38', {'zugewiesen_an': 'Erika Muster'});
+    await s.api.post('/api/reklamationen', {'kategorie': 'licht', 'beschreibung': 'Neu gemeldet'});
+    await reparaturAbfrage(k);
+    final b = Benachrichtigung.attrappe!;
+    expect(b.map((x) => x.titel), ['Meldung #41: Erledigt', 'Dir zugewiesen: Meldung #38']);
+    expect(b.map((x) => x.ziel), ['meine/41', 'bearbeiten/38']);
+    await reparaturAbfrage(k);
+    expect(Benachrichtigung.attrappe!.length, 2, reason: 'nichts doppelt');
+  });
+
+  testWidgets('App-Link mit Melde-Ort oeffnet Melden mit Ort', (t) async {
+    AppVerweise.attrappe = Stream.value(Uri.parse('https://pwa.rosenweg4303.ch/reparatur/?ort=waschk9a'));
+    await zeigen(t);
+    expect(find.text('Waschküche Haus 9'), findsWidgets);
+  });
+
+  testWidgets('Antippen einer Benachrichtigung oeffnet den Bereich', (t) async {
+    final c = StreamController<Uri>();
+    AppVerweise.attrappe = c.stream;
+    await zeigen(t);
+    // Ziel wie aus Benachrichtigung.angetippt
+    final st = t.state(find.byType(Haupt));
+    (st as dynamic).oeffneZiel('meine/41');
+    await t.pumpAndSettle();
+    expect(find.textContaining('Licht im Treppenhaus'), findsOneWidget);
+    await c.close();
   });
 }

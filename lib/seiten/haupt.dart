@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rosenweg_basis/rosenweg_basis.dart';
 
+import '../abfrage.dart';
 import '../daten.dart';
 import '../reparatur_api.dart';
 import 'bearbeiten.dart';
@@ -30,8 +31,12 @@ const reklamationenRecht = 'reklamationen';
 /// und alle 5 Minuten fragt die App nach, was sich bei den eigenen Meldungen
 /// und – fuer Bearbeitende – an neuen Meldungen getan hat.
 class Haupt extends StatefulWidget {
-  const Haupt({super.key, required this.sitzung, this.speicher});
+  const Haupt({super.key, required this.sitzung, this.speicher, this.hintergrund});
   final RosenwegSitzung sitzung;
+
+  /// Abfrage im Hintergrund beim System anmelden (main.dart); null = nicht
+  /// (Attrappe, Tests).
+  final Future<void> Function()? hintergrund;
 
   /// Fuer Tests; sonst der Speicher der App.
   final AppSpeicher? speicher;
@@ -50,12 +55,67 @@ class _HauptState extends State<Haupt> {
   /// Neue Meldungen fuer Bearbeitende seit dem letzten Blick.
   final _neuBearbeiten = ValueNotifier<Set<int>>({});
 
+  /// Bereich, den die Navigation zeigen soll ([_bereichOeffnen]); die
+  /// Runde baut das Geruest neu, damit es ihn uebernimmt.
+  String _bereich = 'Melden';
+  int _runde = 0;
+
+  /// Melde-Ort aus einem App-Link (QR-Code am Ort), fuer "Melden".
+  String? _ortCode;
+  final _abos = <StreamSubscription<Object>>[];
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.sitzung.rechte.laden().ignore();
       _rechteLaden();
+      _benachrichtigungen();
+    });
+    _abos.add(AppVerweise.strom.listen(_verweis));
+  }
+
+  /// Benachrichtigungen einrichten, Abfrage im Hintergrund anmelden, beim
+  /// ersten Mal um Erlaubnis fragen; Antippen oeffnet den Bereich.
+  Future<void> _benachrichtigungen() async {
+    try {
+      await Benachrichtigung.einrichten(widget.sitzung.app);
+      _abos.add(Benachrichtigung.angetippt.listen(_ziel));
+      final z = await Benachrichtigung.startZiel();
+      if (z != null) _ziel(z);
+      await widget.hintergrund?.call();
+      final sp = await _speicher();
+      if (await sp.lesen('erlaubnis-gefragt') != true) {
+        await sp.schreiben('erlaubnis-gefragt', true);
+        await Benachrichtigung.erlaubnisFragen();
+      }
+    } catch (e) {
+      Protokoll.schreiben('Benachrichtigungen', e);
+    }
+  }
+
+  /// Ziel einer Benachrichtigung: `meine/41`, `bearbeiten/41`.
+  @visibleForTesting
+  void oeffneZiel(String ziel) => _ziel(ziel);
+
+  void _ziel(String ziel) {
+    final b = ziel.split('/').first;
+    _bereichOeffnen(b == 'bearbeiten' ? 'Bearbeiten' : 'Meine');
+  }
+
+  /// App-Link: https://pwa.rosenweg4303.ch/reparatur/?ort=<code> → Melden mit Ort.
+  void _verweis(Uri uri) {
+    final code = MeldeOrt.codeAus(uri.toString());
+    if (code == null) return;
+    setState(() => _ortCode = code);
+    _bereichOeffnen('Melden');
+  }
+
+  void _bereichOeffnen(String b) {
+    if (!mounted) return;
+    setState(() {
+      _bereich = b;
+      _runde++;
     });
   }
 
@@ -105,6 +165,11 @@ class _HauptState extends State<Haupt> {
       }
     }
     if (saetze.isNotEmpty && mounted) zeigeMeldung(context, saetze.join(' '));
+    // Am Computer gibt es keine Abfrage des Systems: Benachrichtigungen,
+    // solange die App laeuft (Android/iOS macht das der Hintergrund)
+    if (!HintergrundAbfrage.vomSystem) {
+      await HintergrundAbfrage.einmal(widget.sitzung.app, reparaturAbfrage, sitzung: widget.sitzung);
+    }
   }
 
   /// Nach dem Melden: die eigene neue Meldung nicht als "neu" melden.
@@ -119,6 +184,9 @@ class _HauptState extends State<Haupt> {
 
   @override
   void dispose() {
+    for (final a in _abos) {
+      a.cancel();
+    }
     _neuMeine.dispose();
     _neuBearbeiten.dispose();
     super.dispose();
@@ -138,7 +206,10 @@ class _HauptState extends State<Haupt> {
           final bearbeiten = r?.darf(reklamationenRecht) ?? false;
           final schreiben = r?.darf(reklamationenRecht, Zugriff.schreiben) ?? false;
           final mitStweg = rechte != null && rechte.uebersichtStwegs.isNotEmpty;
+          final ziele = ['Melden', 'Meine', if (mitStweg) 'STWEG', if (bearbeiten) 'Bearbeiten'];
           return RosenwegGeruest(
+            key: ValueKey(_runde),
+            anfangsZiel: ziele.contains(_bereich) ? ziele.indexOf(_bereich) : 0,
             titel: Text(s.app.name),
             logo: Padding(
               padding: const EdgeInsets.all(10),
@@ -150,7 +221,13 @@ class _HauptState extends State<Haupt> {
                 titel: 'Melden',
                 symbol: Icons.add_a_photo_outlined,
                 gewaehltSymbol: Icons.add_a_photo,
-                seite: (_) => MeldenSeite(api: _api, rechte: rechte, gemeldet: _gemeldet),
+                seite: (_) => MeldenSeite(
+                  api: _api,
+                  rechte: rechte,
+                  gemeldet: _gemeldet,
+                  ortCode: _ortCode,
+                  ortVerbraucht: () => _ortCode = null,
+                ),
               ),
               GeruestZiel(
                 titel: 'Meine',
@@ -198,6 +275,7 @@ class _Menue extends StatelessWidget {
           await zeigeUeber(context, sitzung.app);
         case 'abmelden':
           if (await frage(context, 'Abmelden?', 'Danach musst du dich neu anmelden.', ja: 'Abmelden')) {
+            await HintergrundAbfrage.abmelden(sitzung.app);
             await sitzung.abmelden();
           }
       }

@@ -11,7 +11,15 @@ import '../reparatur_api.dart';
 /// Wie die Reparatur-PWA: Foto vor dem Senden verkleinert (1600 px, JPEG
 /// 75 %), Bestaetigung per E-Mail kommt von der API.
 class MeldenSeite extends StatefulWidget {
-  const MeldenSeite({super.key, required this.api, required this.rechte, this.gemeldet, this.scannen});
+  const MeldenSeite({
+    super.key,
+    required this.api,
+    required this.rechte,
+    this.gemeldet,
+    this.scannen,
+    this.ortCode,
+    this.ortVerbraucht,
+  });
   final ReparaturApi api;
 
   /// null = noch nicht geladen (dann ohne Vorschlag der STWEG).
@@ -19,6 +27,11 @@ class MeldenSeite extends StatefulWidget {
 
   /// Nach dem Senden (Neuigkeiten nachfuehren).
   final Future<void> Function()? gemeldet;
+
+  /// Melde-Ort aus einem App-Link (QR-Code mit der Kamera des Telefons
+  /// gescannt, App geoeffnet): gleich vorbelegen, danach [ortVerbraucht].
+  final String? ortCode;
+  final VoidCallback? ortVerbraucht;
 
   /// Fuer Tests: statt der Kamera bzw. des Eingabefelds.
   final Future<String?> Function(BuildContext context)? scannen;
@@ -46,6 +59,11 @@ class _MeldenSeiteState extends State<MeldenSeite> {
   void initState() {
     super.initState();
     _stwegVorschlagen();
+    final c = widget.ortCode;
+    if (c != null) {
+      widget.ortVerbraucht?.call();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _ortLaden(c));
+    }
   }
 
   @override
@@ -83,6 +101,11 @@ class _MeldenSeiteState extends State<MeldenSeite> {
       zeigeMeldung(context, 'Das ist kein Melde-QR-Code der Reparatur.', fehler: true);
       return;
     }
+    await _ortLaden(code);
+  }
+
+  Future<void> _ortLaden(String code) async {
+    if (!mounted) return;
     setState(() => _ortLaedt = true);
     try {
       final o = await widget.api.meldeOrt(code);
