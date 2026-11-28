@@ -213,7 +213,7 @@ class _HauptState extends State<Haupt> {
             titel: Text(s.app.name),
             logo: Padding(
               padding: const EdgeInsets.all(10),
-              child: Image.asset('assets/logo/rosenweg-reparatur-klein.png', semanticLabel: 'Logo'),
+              child: FarbLogo(sitzung: s, klein: true),
             ),
             aktionen: [_Menue(sitzung: s)],
             ziele: [
